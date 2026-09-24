@@ -6,7 +6,7 @@ Docker Compose y desplegable en **un solo comando**.
 ## Estado del proyecto
 
 - [x] Módulo 1 — Infraestructura base (`docker-compose.yml`, `.env.example`)
-- [ ] Módulo 2 — PostGIS + loader de datos
+- [x] Módulo 2 — PostGIS + loader de datos
 - [ ] Módulo 3 — Backend FastAPI
 - [ ] Módulo 4 — GeoServer + init automático
 - [ ] Módulo 5 — Visor web
@@ -85,6 +85,24 @@ Esquema `coberturas`, tabla `clc`:
 | `geom` | `geometry(MultiPolygon, 9377)` NOT NULL | reproyectado desde 4686 (SRID original), `ST_MakeValid` + `ST_Multi` |
 
 Índice `GIST` sobre `geom`. Script en [`db/init/`](db/init/).
+
+**Carga de datos** ([`loader/`](loader/)): `ogr2ogr` importa el `.gpkg` (SRID 4686) a una
+tabla staging reproyectando a 9377 en el mismo paso; luego [`normalize.sql`](loader/normalize.sql)
+aplica `ST_MakeValid` + `ST_Multi` y vuelca a `coberturas.clc`. Idempotente: si la tabla
+final ya tiene filas, [`load.sh`](loader/load.sh) no repite la carga (importante porque el
+contenedor `loader` corre en cada `docker compose up`, no solo la primera vez).
+
+**Dos detalles no obvios, resueltos y documentados en el código:**
+1. La imagen `postgis/postgis` trae su propio script de init (`10_postgis.sh`, crea la
+   extensión PostGIS) dentro de `/docker-entrypoint-initdb.d/`. Un bind-mount de directorio
+   ahí lo **reemplaza y lo borra** (`type "geometry" does not exist`). Por eso `db/` tiene
+   su propio [`Dockerfile`](db/Dockerfile) que agrega nuestro SQL con `COPY` (no lo pisa) y
+   lo nombra `20_schema.sql` para que corra después del script de la extensión.
+2. **EPSG:9377 no viene precargado** en `spatial_ref_sys` de esta imagen de PostGIS (es un
+   código EPSG relativamente nuevo). Sin esa fila, `ogr2ogr` no encuentra coincidencia
+   exacta y autogenera un SRID "privado" (rango 900000+), que choca con la columna tipada
+   `geometry(...,9377)`. [`01_schema.sql`](db/init/01_schema.sql) inserta la definición
+   oficial (WKT/proj4 desde PROJ) antes de crear la tabla.
 
 ## Servicios (`docker compose`)
 

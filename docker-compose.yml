@@ -10,7 +10,8 @@ volumes:
 
 services:
   db:
-    image: postgis/postgis:16-3.4
+    build:
+      context: ./db
     # postgis/postgis no publica build arm64 en ningún tag (verificado en el
     # manifest de Docker Hub). Se fija amd64 explícito: en Mac Apple Silicon o
     # Windows ARM, Docker Desktop lo ejecuta vía emulación (Rosetta/QEMU) sin
@@ -32,3 +33,22 @@ services:
       retries: 10
     # Sin 'ports': la BD solo debe ser alcanzable desde la red interna
     # (loader, backend), nunca directamente desde el host.
+
+  loader:
+    build: ./loader
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+      DB_TABLE: ${DB_TABLE}
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - internal
