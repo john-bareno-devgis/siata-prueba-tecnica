@@ -239,5 +239,26 @@ de `/api/health` en el encabezado (punto verde/rojo).
 
 ## Declaración de uso de IA
 
-_Se completa al cierre del proyecto, documentando en qué partes se usó asistencia de IA
-y cómo se validó cada una._
+Este proyecto se construyó con asistencia de un modelo de lenguaje (asistente de código en
+terminal), módulo por módulo, con commit al cierre de cada uno. El flujo de trabajo fue:
+yo defino requisitos y decisiones de arquitectura (ver tabla de decisiones técnicas arriba),
+la IA genera una primera versión del código/configuración, y cada módulo se valida
+levantando el stack completo desde cero (`docker compose down -v && up -d --build`) antes
+de pasar al siguiente — nada se dio por bueno solo porque "se veía razonable".
+
+Ejemplos concretos de errores reales que la validación en vivo encontró y que tuvieron que
+corregirse (no hipotéticos, quedan documentados en el código y en los mensajes de commit):
+
+- Un bind-mount que borraba el script de inicialización propio de la imagen de PostGIS
+  (`db/Dockerfile`).
+- EPSG:9377 no viene precargado ni en PostGIS ni en GeoTools (motor de CRS de GeoServer);
+  hubo que registrar la definición manualmente en ambos, cada uno con su propio mecanismo
+  (`db/init/01_schema.sql`, `geoserver/projections/epsg.properties`).
+- Un error de orden de ejes (Northing/Easting) en esa misma definición para GeoTools que
+  hacía que el mapa se desplazara a otro continente — solo visible probando el visor en un
+  navegador real, no con `curl`.
+
+Todo el SQL espacial, los endpoints y sus reglas de validación, y las decisiones de
+arquitectura (SRID de almacenamiento, separación staging/normalización, manejo de errores
+por capas) fueron revisados y entendidos línea por línea, no solo copiados — es el criterio
+que debo poder sustentar en la entrevista técnica.
