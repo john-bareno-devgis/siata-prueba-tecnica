@@ -52,3 +52,28 @@ services:
       - ./data:/data:ro
     networks:
       - internal
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      loader:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+      DB_TABLE: ${DB_TABLE}
+    networks:
+      - internal
+      - public
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Sin 'ports': solo 'web' (Nginx) lo expone al host, vía reverse proxy.

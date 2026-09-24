@@ -7,7 +7,7 @@ Docker Compose y desplegable en **un solo comando**.
 
 - [x] Módulo 1 — Infraestructura base (`docker-compose.yml`, `.env.example`)
 - [x] Módulo 2 — PostGIS + loader de datos
-- [ ] Módulo 3 — Backend FastAPI
+- [x] Módulo 3 — Backend FastAPI
 - [ ] Módulo 4 — GeoServer + init automático
 - [ ] Módulo 5 — Visor web
 
@@ -117,7 +117,73 @@ contenedor `loader` corre en cada `docker compose up`, no solo la primera vez).
 
 ## Endpoints
 
-_Se documentan con ejemplos `curl` al completar el módulo de backend._
+Prefijo `/api` (vía Nginx: `http://localhost:${WEB_PORT}/api/...`). Documentación interactiva
+(Swagger) en `/api/docs`.
+
+### `GET /api/health`
+
+Estado del backend + conexión a PostGIS. `200` si la BD responde, `503` si no.
+
+```bash
+curl http://localhost/api/health
+# {"status":"ok","postgis_version":"3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1"}
+```
+
+### `POST /api/intersect`
+
+Body: **una** de dos opciones (rechaza `422` si envías ambas, ninguna, o `point` sin `radius_m`).
+
+**Opción A — polígono (GeoJSON, EPSG:4326):**
+```bash
+curl -X POST http://localhost/api/intersect \
+  -H "Content-Type: application/json" \
+  -d '{
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[-75.60,6.24],[-75.58,6.24],[-75.58,6.26],[-75.60,6.26],[-75.60,6.24]]]
+    }
+  }'
+```
+
+**Opción B — punto + radio en metros:**
+```bash
+curl -X POST http://localhost/api/intersect \
+  -H "Content-Type: application/json" \
+  -d '{"point": {"lon": -75.59, "lat": 6.25}, "radius_m": 800}'
+```
+
+Respuesta (`FeatureCollection` en 4326):
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"...": "..."},
+     "properties": {"codigo": "231", "cobertura": "2.3.1. Pastos limpios", "area_ha": 45.12, "pct": 22.59}}
+  ],
+  "query_geometry": {"type": "Polygon", "coordinates": [["..."]]},
+  "summary": {"total_ha": 199.77, "n_coberturas": 4}
+}
+```
+
+Errores: `422` si el body no cumple el esquema (Pydantic) o `radius_m` está fuera de rango
+(`0 < radius_m ≤ 50000`); `400` si la geometría no se puede interpretar (GeoJSON mal formado,
+coordenadas fuera de rango); `200` con `features: []` si no hay intersección (no es error).
+
+### `GET /api/stats`
+
+Área por cobertura sobre toda el área de estudio, calculada en PostGIS con `SUM() OVER()`.
+
+```bash
+curl http://localhost/api/stats
+```
+```json
+{
+  "coberturas": [
+    {"codigo": "111", "cobertura": "1.1.1. Tejido urbano continuo", "area_ha": 9379.3186, "pct": 25.12}
+  ],
+  "total_ha": 37344.0416
+}
+```
 
 ## Declaración de uso de IA
 
