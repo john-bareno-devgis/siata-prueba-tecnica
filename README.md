@@ -44,6 +44,23 @@ docker compose up -d --build
 
 Visor: `http://localhost:${WEB_PORT}` (por defecto `http://localhost:80`).
 
+## Modo desarrollo
+
+[`docker-compose.dev.yml`](docker-compose.dev.yml) monta `backend/app` y `web/site` como bind
+mount sobre las imágenes ya construidas, y corre `uvicorn --reload`. Así los cambios en
+Python/HTML/CSS/JS se ven sin `docker compose build`. **No se carga automático** (a propósito:
+`docker compose` solo auto-carga un archivo llamado `docker-compose.override.yml`; este tiene
+otro nombre para no arriesgar que alguien lo levante sin darse cuenta en un despliegue real) —
+hay que pasarlo explícito con `-f`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Editar un archivo en `backend/app/` o `web/site/` y ver el cambio reflejado (backend: recarga
+automática de uvicorn; web: recarga la página, Nginx sirve el archivo del bind mount directo).
+Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f docker-compose.dev.yml`.
+
 ## Estructura del repo
 
 ```
