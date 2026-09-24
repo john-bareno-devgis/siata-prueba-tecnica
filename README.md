@@ -8,7 +8,7 @@ Docker Compose y desplegable en **un solo comando**.
 - [x] Módulo 1 — Infraestructura base (`docker-compose.yml`, `.env.example`)
 - [x] Módulo 2 — PostGIS + loader de datos
 - [x] Módulo 3 — Backend FastAPI
-- [ ] Módulo 4 — GeoServer + init automático
+- [x] Módulo 4 — GeoServer + init automático
 - [ ] Módulo 5 — Visor web
 
 ## Requisitos por sistema operativo
@@ -91,6 +91,18 @@ tabla staging reproyectando a 9377 en el mismo paso; luego [`normalize.sql`](loa
 aplica `ST_MakeValid` + `ST_Multi` y vuelca a `coberturas.clc`. Idempotente: si la tabla
 final ya tiene filas, [`load.sh`](loader/load.sh) no repite la carga (importante porque el
 contenedor `loader` corre en cada `docker compose up`, no solo la primera vez).
+
+**GeoServer** ([`geoserver/init/`](geoserver/init/)): el contenedor `geoserver-init` configura todo
+vía REST API tras el healthcheck de `geoserver` (`curl` autenticado, idempotente — cada
+paso hace `GET` antes de `POST`): workspace `siata` → datastore PostGIS (`coberturas.clc`)
+→ capa `clc` → estilo [`style_nivel1.sld`](geoserver/init/style_nivel1.sld) (5 colores por
+código CLC nivel 1) como estilo por defecto de la capa.
+
+**Tercer caso del mismo problema de EPSG:9377**: GeoTools (motor de CRS de GeoServer) tampoco
+trae ese código precargado — es una base EPSG distinta a la de PostGIS/PROJ. La solución
+oficial de GeoServer es un archivo `user_projections/epsg.properties` en el data dir; como
+ese data dir vive en un volumen con nombre, el servicio `geoserver-projections` lo escribe
+ahí **antes** de que arranque `geoserver` (mismo WKT ya usado para PostGIS).
 
 **Dos detalles no obvios, resueltos y documentados en el código:**
 1. La imagen `postgis/postgis` trae su propio script de init (`10_postgis.sh`, crea la

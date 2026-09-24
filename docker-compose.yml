@@ -7,6 +7,7 @@ networks:
 
 volumes:
   pgdata:
+  geoserver_data:
 
 services:
   db:
@@ -77,3 +78,67 @@ services:
       retries: 5
       start_period: 10s
     # Sin 'ports': solo 'web' (Nginx) lo expone al host, vía reverse proxy.
+
+  # Escribe user_projections/epsg.properties en el volumen geoserver_data
+  # ANTES de que arranque GeoServer: GeoTools (motor de CRS) tampoco trae
+  # EPSG:9377 precargado (mismo problema que tuvo PostGIS, ver
+  # db/init/01_schema.sql), y ese archivo es el mecanismo oficial para
+  # agregar codigos EPSG faltantes.
+  geoserver-projections:
+    image: busybox:1.36
+    restart: "no"
+    volumes:
+      - ./geoserver/projections:/src:ro
+      - geoserver_data:/data
+    command: ["sh", "-c", "mkdir -p /data/user_projections && cp /src/epsg.properties /data/user_projections/epsg.properties && echo listo"]
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.25.2
+    # Al igual que 'db': la imagen oficial de GeoServer no publica build
+    # arm64 (verificado contra el manifest del registro). Docker Desktop
+    # la ejecuta vía emulación en Mac Apple Silicon / Windows ARM.
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      loader:
+        condition: service_completed_successfully
+      geoserver-projections:
+        condition: service_completed_successfully
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      SKIP_DEMO_DATA: "true"
+    volumes:
+      - geoserver_data:/opt/geoserver_data
+    networks:
+      - internal
+      - public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8080/geoserver/rest/about/version.json -u $${GEOSERVER_ADMIN_USER}:$${GEOSERVER_ADMIN_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+    # Sin 'ports': se accede vía 'web' (reverse proxy), igual que 'backend'.
+
+  geoserver-init:
+    build: ./geoserver/init
+    restart: "no"
+    depends_on:
+      geoserver:
+        condition: service_healthy
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      GEOSERVER_WORKSPACE: ${GEOSERVER_WORKSPACE}
+      GEOSERVER_DATASTORE: ${GEOSERVER_DATASTORE}
+      GEOSERVER_LAYER: ${GEOSERVER_LAYER}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: ${DB_SCHEMA}
+      DB_TABLE: ${DB_TABLE}
+    networks:
+      - internal
