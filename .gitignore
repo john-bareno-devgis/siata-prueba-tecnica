@@ -1,0 +1,17 @@
+# Variables de entorno reales (solo .env.example va al repo)
+.env
+
+# Datos generados en runtime (volúmenes montados vía bind mount, si aplica)
+db/pgdata/
+geoserver/data_dir/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

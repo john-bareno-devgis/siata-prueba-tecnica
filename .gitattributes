@@ -1,0 +1,17 @@
+# Normaliza finales de línea a LF para todo el repo: evita que scripts .sh
+# fallen dentro de contenedores Linux si alguien clona/edita desde Windows
+# (CRLF rompe el shebang `#!/bin/sh` con el error "no such file or directory").
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.sql text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.env* text eol=lf
+*.conf text eol=lf
+
+# Binarios: sin transformación de línea.
+*.gpkg binary
+*.png binary
+*.jpg binary

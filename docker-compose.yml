@@ -1,0 +1,34 @@
+networks:
+  # internal: solo los servicios que necesitan hablar con la BD y entre sí.
+  internal:
+  # public: servicios alcanzables desde web (reverse proxy). No se exponen puertos
+  # de host aquí salvo en 'web', que es el único punto de entrada externo.
+  public:
+
+volumes:
+  pgdata:
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    # postgis/postgis no publica build arm64 en ningún tag (verificado en el
+    # manifest de Docker Hub). Se fija amd64 explícito: en Mac Apple Silicon o
+    # Windows ARM, Docker Desktop lo ejecuta vía emulación (Rosetta/QEMU) sin
+    # configuración extra, a costa de algo de rendimiento.
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sin 'ports': la BD solo debe ser alcanzable desde la red interna
+    # (loader, backend), nunca directamente desde el host.
