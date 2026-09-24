@@ -5,12 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SIATA · Coberturas CLC Valle de Aburrá</title>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <!-- ?v= es cache-busting manual: sin Cache-Control explícito, el
+       navegador puede reusar una versión vieja de este CSS/JS tras un
+       despliegue. Se sube el número al cambiar estos archivos. -->
+  <link rel="stylesheet" href="css/styles.css?v=5" />
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>Coberturas CORINE Land Cover · Valle de Aburrá</h1>
+      <div class="brand">
+        <img src="assets/logos/logo-siata.svg" alt="SIATA" class="logo" />
+        <div class="titles">
+          <h1>Coberturas CORINE Land Cover</h1>
+          <span class="subtitle">Valle de Aburrá</span>
+        </div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab-btn active" data-view="mapa">Mapa</button>
+        <button class="tab-btn" data-view="dashboard">Dashboard</button>
+      </nav>
+
       <div class="health">
         <span id="health-dot" class="health-dot"></span>
         <span id="health-text">consultando...</span>
@@ -18,37 +33,68 @@
     </header>
 
     <div class="main">
-      <div id="map"></div>
+      <div id="view-mapa" class="view">
+        <div id="map"></div>
+      </div>
+
+      <div id="view-dashboard" class="view" hidden>
+        <div class="dashboard">
+          <div class="kpi-row" id="kpi-row"></div>
+          <div class="charts-row">
+            <div class="chart-card">
+              <h3>Área por nivel 1 (CLC)</h3>
+              <div id="chart-nivel1"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Coberturas nivel 3 (todas, por área)</h3>
+              <div id="chart-nivel3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="panel">
         <div id="error-box" class="error-box"></div>
 
-        <h2>Consultar coberturas</h2>
-        <p class="hint">
-          Haga clic en el mapa para calcular las coberturas dentro de un radio
-          alrededor del punto.
-        </p>
-        <div class="field">
-          <label for="radius">Radio (m)</label>
-          <input type="number" id="radius" value="500" min="1" max="50000" step="50" />
-        </div>
-        <button id="btn-stats">Ver estadísticas del área de estudio</button>
+        <div id="panel-mapa" class="panel-section">
+          <h2>Consultar coberturas</h2>
+          <p class="hint">
+            Haga clic en el mapa para calcular las coberturas dentro de un radio
+            alrededor del punto.
+          </p>
+          <div class="field">
+            <label for="radius">Radio (m)</label>
+            <input type="number" id="radius" value="500" min="1" max="50000" step="50" />
+          </div>
+          <button id="btn-goto-dashboard">Ver dashboard del área de estudio</button>
 
-        <div id="results"></div>
+          <div id="results"></div>
+        </div>
+
+        <div id="panel-dashboard" class="panel-section" hidden>
+          <h2>Dashboard</h2>
+          <p class="hint">
+            Estadísticas agregadas sobre toda el área de estudio (425 polígonos,
+            Valle de Aburrá), calculadas en PostGIS.
+          </p>
+        </div>
 
         <div class="legend">
-          <h2>Leyenda (nivel 1 CLC)</h2>
-          <div class="legend-item"><span class="legend-swatch" style="background:#E6004D"></span>1. Territorios artificializados</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:#FFFFA8"></span>2. Territorios agrícolas</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:#4C7300"></span>3. Bosques y áreas seminaturales</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:#A6A6FF"></span>4. Áreas húmedas</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:#00CCF2"></span>5. Superficies de agua</div>
+          <h2>Leyenda (nivel 3 CLC)</h2>
+          <div id="legend-list"></div>
         </div>
+
+        <footer class="credit">
+          Hecho por:
+          <a href="https://john-bareno-devgis.github.io/portafolio/" target="_blank" rel="noopener">
+            John Bareño
+          </a>
+        </footer>
       </div>
     </div>
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

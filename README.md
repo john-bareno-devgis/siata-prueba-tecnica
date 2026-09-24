@@ -71,11 +71,11 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 ├── db/init/                   # SQL de esquema, se ejecuta al primer arranque de PostGIS
 ├── loader/                    # contenedor GDAL: carga el .gpkg a la BD
 ├── backend/                   # FastAPI (app/{main,config,db,routers,schemas,services})
-├── geoserver/init/            # contenedor que configura GeoServer vía REST API
+├── geoserver/init/            # contenedor que configura GeoServer vía REST API (workspace, datastore, capa, 2 estilos SLD)
 ├── geoserver/projections/     # EPSG:9377 para GeoTools (user_projections)
 └── web/                       # Nginx: visor Leaflet estático + reverse proxy
     ├── nginx.conf
-    └── site/                  # index.html, css/, js/, vendor/leaflet/ (vendorizado, sin CDN)
+    └── site/                  # index.html, css/, js/, assets/logos/, vendor/leaflet/ (vendorizado, sin CDN)
 ```
 
 ## Stack y decisiones técnicas
@@ -88,7 +88,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 | Carga de datos | Contenedor GDAL (`ogr2ogr`) → tabla staging → SQL normaliza (`ST_MakeValid`, `ST_Multi`) | Reproducible desde el `.gpkg` fuente; idempotente (no duplica si ya hay datos). |
 | Backend | FastAPI + `psycopg 3` con pool, SQL espacial explícito (sin ORM) | Liviano, Swagger/OpenAPI automático; el cálculo geométrico pesado queda en PostGIS, no en Python. |
 | Publicación OGC | GeoServer oficial (versión fija) + contenedor `geoserver-init` que llama la REST API con `curl` | Configuración 100% automática y auditable (queda en un script versionado, no en clicks manuales). |
-| Estilo | SLD por código CLC nivel 1 | Leyenda temática legible en el visor. |
+| Estilo | SLD por código CLC nivel 3 (21 categorías, por defecto), nivel 1 también disponible | Nivel 3 es la clasificación operativa real (nivel 1 son solo 5 macro-categorías); colores por familia de tono según nivel1, igual que el estándar CORINE. |
 | Visor | Leaflet estático servido por Nginx, assets vendorizados (sin CDN) | Nginx también hace reverse proxy de `/api` y `/geoserver` → mismo origen, sin problemas de CORS; sin CDN, el visor no depende de que el navegador del evaluador tenga salida a internet más allá de las teselas OSM. |
 | Imágenes multi-arch | `ghcr.io/osgeo/gdal` (loader), `python:3.12-slim` (backend), `nginx:1.27-alpine` (web) nativas; `postgis/postgis` y GeoServer forzadas a `linux/amd64` | Ver tabla de requisitos por SO arriba — decisión basada en qué publica cada registro, no supuesta. |
 
@@ -101,6 +101,7 @@ Esquema `coberturas`, tabla `clc`:
 | `id` | serial PK | generado |
 | `codigo` | varchar | campo `codigo` del `.gpkg` |
 | `nivel1` | varchar | derivado: primer dígito de `codigo` (validado contra el campo `nivel_1` del `.gpkg`) |
+| `nivel3` | text | campo `nivel_3` del `.gpkg` (nombre oficial IDEAM del nivel 3 — no se deriva de `codigo`, ver abajo) |
 | `cobertura` | text | campo `leyenda` del `.gpkg` |
 | `geom` | `geometry(MultiPolygon, 9377)` NOT NULL | reproyectado desde 4686 (SRID original), `ST_MakeValid` + `ST_Multi` |
 
@@ -112,11 +113,29 @@ aplica `ST_MakeValid` + `ST_Multi` y vuelca a `coberturas.clc`. Idempotente: si 
 final ya tiene filas, [`load.sh`](loader/load.sh) no repite la carga (importante porque el
 contenedor `loader` corre en cada `docker compose up`, no solo la primera vez).
 
+**Por qué `nivel3` viene del `.gpkg` y no se deriva por substring de `codigo`**: a diferencia
+de `nivel1` (siempre el primer dígito, sin ambigüedad), el nivel 3 IDEAM no es simplemente
+"los primeros 3 dígitos de `codigo`" con un nombre fijo — el dataset trae códigos de 4 y 5
+dígitos (ej. `31111`, `31121`, subcategorías de "Bosque denso") que agrupan bajo el mismo
+nivel 3 pero con nombres más específicos (`leyenda`) distintos entre sí. El `.gpkg` ya trae
+un campo `nivel_3` con el nombre oficial correcto para cada fila (verificado con `ogrinfo`:
+`codigo=3232` → `nivel_3="3.2.3. Vegetación secundaria o en transición"`, distinto de
+`leyenda="3.2.3.2. Vegetación secundaria baja"`), así que se usa tal cual en vez de adivinar
+nombres.
+
 **GeoServer** ([`geoserver/init/`](geoserver/init/)): el contenedor `geoserver-init` configura todo
 vía REST API tras el healthcheck de `geoserver` (`curl` autenticado, idempotente — cada
 paso hace `GET` antes de `POST`): workspace `siata` → datastore PostGIS (`coberturas.clc`)
-→ capa `clc` → estilo [`style_nivel1.sld`](geoserver/init/style_nivel1.sld) (5 colores por
-código CLC nivel 1) como estilo por defecto de la capa.
+→ capa `clc` → dos estilos SLD, [`clc_nivel1.sld`](geoserver/init/clc_nivel1.sld) (5 colores,
+nivel 1) y [`clc_nivel3.sld`](geoserver/init/clc_nivel3.sld) (21 colores, nivel 3 — estilo por
+defecto de la capa). Los colores de `clc_nivel3.sld` no se inventaron a mano: se generaron
+con un script Python (HSL) que fija un tono (hue) por nivel1 y varía la luminosidad según la
+posición del código dentro de su grupo — mismo criterio que usa CORINE Land Cover
+oficialmente (subcategorías de una misma familia comparten matiz). El frontend
+([`app.js`](web/site/js/app.js)) recalcula esos mismos colores con la misma fórmula en vez
+de mantener una lista de 21 colores duplicada a mano: así el mapa (SLD), la leyenda y las
+gráficas del dashboard siempre quedan sincronizados entre sí y con lo que de verdad
+devuelve `/api/stats`, sin poder desincronizarse por un edit en un solo lugar.
 
 **Tercer y cuarto caso del mismo problema de EPSG:9377**: GeoTools (motor de CRS de GeoServer)
 tampoco trae ese código precargado — es una base EPSG distinta a la de PostGIS/PROJ. La solución
@@ -154,7 +173,7 @@ oficial, sino el que coincide con cómo el resto del stack realmente sirve los d
 - `backend` — FastAPI (uvicorn), healthcheck a `/api/health`, depende de que `loader` termine con éxito.
 - `geoserver-projections` — escribe `user_projections/epsg.properties` en el volumen antes de que arranque `geoserver`.
 - `geoserver` — volumen con nombre para el data dir, healthcheck a REST `about/version`.
-- `geoserver-init` — tras `geoserver` healthy: crea workspace `siata`, datastore PostGIS, capa `clc`, estilo SLD; idempotente (verifica antes de crear).
+- `geoserver-init` — tras `geoserver` healthy: crea workspace `siata`, datastore PostGIS, capa `clc`, estilos `clc_nivel1`/`clc_nivel3` (nivel3 por defecto); idempotente (verifica antes de crear).
 - `web` — Nginx: `/` visor, `/api/` → `backend:8000`, `/geoserver/` → `geoserver:8080`. Único puerto publicado al host.
 - Redes: `internal` (db, loader, backend, geoserver, geoserver-init, geoserver-projections) y `public` (web, backend, geoserver).
 - Todo parametrizado en `.env` (plantilla `.env.example`); ninguna credencial en el código.
@@ -215,7 +234,10 @@ coordenadas fuera de rango); `200` con `features: []` si no hay intersección (n
 
 ### `GET /api/stats`
 
-Área por cobertura sobre toda el área de estudio, calculada en PostGIS con `SUM() OVER()`.
+Área por cobertura (una fila por `codigo`) sobre toda el área de estudio, calculada en
+PostGIS con `SUM() OVER()`. Incluye `nivel1` y `nivel3` en cada fila para que el frontend
+pueda agrupar/graficar sin pedir nada extra (varios `codigo` pueden compartir `nivel3`, ver
+nota arriba — el dashboard los agrupa en el cliente).
 
 ```bash
 curl http://localhost/api/stats
@@ -223,7 +245,10 @@ curl http://localhost/api/stats
 ```json
 {
   "coberturas": [
-    {"codigo": "111", "cobertura": "1.1.1. Tejido urbano continuo", "area_ha": 9379.3186, "pct": 25.12}
+    {
+      "codigo": "111", "nivel1": "1", "nivel3": "1.1.1. Tejido urbano continuo",
+      "cobertura": "1.1.1. Tejido urbano continuo", "area_ha": 9379.3186, "pct": 25.12
+    }
   ],
   "total_ha": 37344.0416
 }
@@ -231,11 +256,21 @@ curl http://localhost/api/stats
 
 ## Visor
 
-`http://localhost:${WEB_PORT}` — mapa Leaflet con base OSM + capa WMS `siata:clc`
-(estilo por código CLC nivel 1). Clic en el mapa + radio (m) en el panel → `POST /api/intersect`
-→ dibuja el círculo de consulta y las coberturas resultantes, con tabla (código, cobertura,
-ha, %). Botón "Ver estadísticas del área de estudio" → `GET /api/stats`. Indicador de estado
-de `/api/health` en el encabezado (punto verde/rojo).
+`http://localhost:${WEB_PORT}` — encabezado con el logo institucional de SIATA
+([`assets/logos/logo-siata.svg`](web/site/assets/logos/logo-siata.svg), oficial, tomado de
+siata.gov.co) y dos pestañas:
+
+- **Mapa**: Leaflet con base OSM + capa WMS `siata:clc` (estilo nivel 3). Clic en el mapa +
+  radio (m) en el panel → `POST /api/intersect` → dibuja el círculo de consulta y las
+  coberturas resultantes, con tabla (código, cobertura, ha, %).
+- **Dashboard**: tarjetas KPI (área total, n.º de coberturas nivel 3, cobertura dominante,
+  % de área natural) + gráficas de barras (área por nivel 1, todas las coberturas nivel 3
+  ordenadas por área) — todo calculado en el cliente a partir de una sola llamada a
+  `GET /api/stats` (cacheada, no se repite la petición al cambiar de pestaña).
+
+La leyenda (nivel 3, 21 categorías agrupadas por nivel 1, colapsables) y el indicador de
+estado de `/api/health` (punto verde/rojo) son visibles en ambas pestañas. Al final de la
+barra lateral, crédito de autoría con link al portafolio.
 
 ## Declaración de uso de IA
 

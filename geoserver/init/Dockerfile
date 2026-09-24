@@ -3,7 +3,7 @@
 FROM curlimages/curl:8.11.1
 
 WORKDIR /app
-COPY init.sh style_nivel1.sld ./
+COPY init.sh clc_nivel1.sld clc_nivel3.sld ./
 
 USER root
 RUN chmod +x init.sh

@@ -23,10 +23,15 @@ ON CONFLICT (srid) DO NOTHING;
 -- Cover: el primer dígito es el nivel 1 jerárquico, ej. 111 -> nivel1 '1'
 -- "Territorios artificializados"). Se guarda ya calculado para no repetir
 -- la extracción de substring en cada consulta del backend.
+-- nivel3 viene tal cual del campo "nivel_3" del .gpkg fuente (nombre
+-- oficial IDEAM del nivel 3, ej. codigo 3232 -> nivel3 "3.2.3. Vegetación
+-- secundaria o en transición" -- mas general que "cobertura", que para
+-- ese mismo codigo es "3.2.3.2. Vegetación secundaria baja", nivel 4).
 CREATE TABLE IF NOT EXISTS coberturas.clc (
     id        SERIAL PRIMARY KEY,
     codigo    VARCHAR(10) NOT NULL,
     nivel1    VARCHAR(1)  NOT NULL,
+    nivel3    TEXT        NOT NULL,
     cobertura TEXT        NOT NULL,
     geom      GEOMETRY(MultiPolygon, 9377) NOT NULL
 );

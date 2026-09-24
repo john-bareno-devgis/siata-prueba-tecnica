@@ -10,7 +10,9 @@ AUTH="${GEOSERVER_ADMIN_USER}:${GEOSERVER_ADMIN_PASSWORD}"
 WS="${GEOSERVER_WORKSPACE}"
 DS="${GEOSERVER_DATASTORE}"
 LAYER="${GEOSERVER_LAYER}"
-STYLE="clc_nivel1"
+# Estilo por defecto de la capa: nivel 3 (mas especifico). nivel1 se deja
+# creado tambien, por si se quiere usar como estilo alterno.
+STYLE_DEFAULT="clc_nivel3"
 
 curl_json() {
     curl -sS -f -u "$AUTH" -H "Content-Type: application/json" "$@"
@@ -66,21 +68,23 @@ else
     echo "geoserver-init: capa $LAYER ya existe, se omite."
 fi
 
-# 4. Estilo SLD por código CLC nivel 1
-if [ "$(status_code "$GS_URL/styles/$STYLE.json")" != "200" ]; then
-    echo "geoserver-init: creando estilo $STYLE..."
-    curl_json -X POST -d "{\"style\":{\"name\":\"$STYLE\",\"filename\":\"$STYLE.sld\"}}" "$GS_URL/styles"
-    curl -sS -f -u "$AUTH" -X PUT \
-        -H "Content-Type: application/vnd.ogc.sld+xml" \
-        --data-binary "@style_nivel1.sld" \
-        "$GS_URL/styles/$STYLE"
-else
-    echo "geoserver-init: estilo $STYLE ya existe, se omite."
-fi
+# 4. Estilos SLD (nivel 1 y nivel 3 CLC)
+for STYLE in clc_nivel1 clc_nivel3; do
+    if [ "$(status_code "$GS_URL/styles/$STYLE.json")" != "200" ]; then
+        echo "geoserver-init: creando estilo $STYLE..."
+        curl_json -X POST -d "{\"style\":{\"name\":\"$STYLE\",\"filename\":\"$STYLE.sld\"}}" "$GS_URL/styles"
+        curl -sS -f -u "$AUTH" -X PUT \
+            -H "Content-Type: application/vnd.ogc.sld+xml" \
+            --data-binary "@${STYLE}.sld" \
+            "$GS_URL/styles/$STYLE"
+    else
+        echo "geoserver-init: estilo $STYLE ya existe, se omite."
+    fi
+done
 
 # 5. Estilo por defecto de la capa (se reafirma en cada corrida, es barato
 # e idempotente por naturaleza: PUT del mismo valor no tiene efecto extra).
-echo "geoserver-init: asignando estilo por defecto a la capa..."
-curl_json -X PUT -d "{\"layer\":{\"defaultStyle\":{\"name\":\"$STYLE\"}}}" "$GS_URL/layers/$WS:$LAYER"
+echo "geoserver-init: asignando estilo por defecto a la capa ($STYLE_DEFAULT)..."
+curl_json -X PUT -d "{\"layer\":{\"defaultStyle\":{\"name\":\"$STYLE_DEFAULT\"}}}" "$GS_URL/layers/$WS:$LAYER"
 
 echo "geoserver-init: listo."

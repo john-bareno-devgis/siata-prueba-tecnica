@@ -27,12 +27,14 @@ def get_stats() -> tuple[list[dict], float]:
     # pasada de agregación, sin una segunda consulta para el total.
     sql = f"""
         WITH por_cobertura AS (
-            SELECT codigo, cobertura, SUM(ST_Area(geom)) / 10000.0 AS area_ha
+            SELECT codigo, nivel1, nivel3, cobertura, SUM(ST_Area(geom)) / 10000.0 AS area_ha
             FROM {SCHEMA}.{TABLE}
-            GROUP BY codigo, cobertura
+            GROUP BY codigo, nivel1, nivel3, cobertura
         )
         SELECT
             codigo,
+            nivel1,
+            nivel3,
             cobertura,
             round(area_ha::numeric, 4) AS area_ha,
             round((area_ha / SUM(area_ha) OVER ())::numeric * 100, 2) AS pct,
@@ -48,6 +50,8 @@ def get_stats() -> tuple[list[dict], float]:
     coberturas = [
         {
             "codigo": r["codigo"],
+            "nivel1": r["nivel1"],
+            "nivel3": r["nivel3"],
             "cobertura": r["cobertura"],
             "area_ha": float(r["area_ha"]),
             "pct": float(r["pct"]),

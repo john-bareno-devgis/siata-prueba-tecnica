@@ -1,3 +1,9 @@
+:root {
+  --brand: #176f7c;
+  --brand-dark: #0f4f59;
+  --brand-light: #e3f1f3;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -16,18 +22,70 @@ html, body {
   height: 100%;
 }
 
+/* --- Encabezado --- */
 header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: #0f5132;
+  gap: 20px;
+  padding: 8px 16px;
+  background: var(--brand);
   color: #fff;
+  flex-wrap: wrap;
 }
 
-header h1 {
-  font-size: 16px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand .logo {
+  height: 38px;
+  width: auto;
+}
+
+.brand .titles {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand h1 {
+  font-size: 15px;
   margin: 0;
+  font-weight: 600;
+}
+
+.brand .subtitle {
+  font-size: 11.5px;
+  opacity: 0.85;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.tab-btn {
+  border: none;
+  background: transparent;
+  color: #fff;
+  opacity: 0.75;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+.tab-btn.active {
+  background: rgba(255, 255, 255, 0.22);
+  opacity: 1;
   font-weight: 600;
 }
 
@@ -36,6 +94,7 @@ header h1 {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .health-dot {
@@ -43,20 +102,27 @@ header h1 {
   height: 9px;
   border-radius: 50%;
   background: #999;
+  flex-shrink: 0;
 }
 
 .health-dot.ok { background: #4caf50; }
 .health-dot.error { background: #e53935; }
 
+/* --- Layout principal --- */
 .main {
   flex: 1;
   display: flex;
   min-height: 0;
 }
 
-#map {
+.view {
   flex: 1;
   min-width: 0;
+  overflow: auto;
+}
+
+#map {
+  height: 100%;
 }
 
 .panel {
@@ -66,6 +132,8 @@ header h1 {
   overflow-y: auto;
   border-left: 1px solid #e0e0e0;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel h2 {
@@ -97,22 +165,22 @@ header h1 {
 
 button {
   cursor: pointer;
-  border: 1px solid #0f5132;
+  border: 1px solid var(--brand);
   background: #fff;
-  color: #0f5132;
+  color: var(--brand);
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 13px;
 }
 
-button:hover { background: #e6f4ea; }
+button:hover { background: var(--brand-light); }
 
 button.primary {
-  background: #0f5132;
+  background: var(--brand);
   color: #fff;
 }
 
-button.primary:hover { background: #0c3f27; }
+button.primary:hover { background: var(--brand-dark); }
 
 .error-box {
   display: none;
@@ -130,7 +198,7 @@ button.primary:hover { background: #0c3f27; }
   font-size: 13px;
 }
 
-.summary strong { color: #0f5132; }
+.summary strong { color: var(--brand); }
 
 table {
   width: 100%;
@@ -146,17 +214,37 @@ th, td {
 
 th { color: #555; font-weight: 600; }
 
+/* --- Leyenda (nivel 3, agrupada por nivel 1) --- */
 .legend {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid #e0e0e0;
 }
 
+.legend-group {
+  margin-bottom: 4px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.legend-group summary {
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  padding: 3px 8px 3px 20px;
+  font-size: 12px;
 }
 
 .legend-swatch {
@@ -164,4 +252,123 @@ th { color: #555; font-weight: 600; }
   height: 12px;
   border: 1px solid #4d4d4d;
   flex-shrink: 0;
+}
+
+/* --- Crédito (pie de la barra lateral) --- */
+.credit {
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 11.5px;
+  color: #888;
+  text-align: center;
+}
+
+.credit a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.credit a:hover { text-decoration: underline; }
+
+/* --- Dashboard --- */
+.dashboard {
+  padding: 20px;
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.kpi-card .kpi-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.kpi-card .kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand);
+  line-height: 1.2;
+}
+
+.kpi-card .kpi-sub {
+  font-size: 11.5px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.chart-card {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.chart-card h3 {
+  font-size: 13px;
+  margin: 0 0 10px;
+  color: #333;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+/* flex-basis en vez de width fijo: en un contenedor angosto (sidebar,
+   ventana chica) la etiqueta cede espacio primero (hasta min-width) antes
+   que la barra se quede sin sitio -- más robusto que un breakpoint fijo,
+   que no sabe cuánto espacio le tocó realmente a .chart-card. */
+.bar-label {
+  flex: 0 1 130px;
+  min-width: 50px;
+  text-align: right;
+  color: #444;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  flex: 1 1 40px;
+  min-width: 40px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+  height: 16px;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px 0 0 3px;
+}
+
+.bar-value {
+  flex: 0 0 auto;
+  min-width: 60px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
