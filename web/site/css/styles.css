@@ -1,0 +1,167 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: #1f2933;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #0f5132;
+  color: #fff;
+}
+
+header h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.health {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.health-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #999;
+}
+
+.health-dot.ok { background: #4caf50; }
+.health-dot.error { background: #e53935; }
+
+.main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#map {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel {
+  width: 360px;
+  flex-shrink: 0;
+  padding: 14px;
+  overflow-y: auto;
+  border-left: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.panel h2 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.panel p.hint {
+  color: #666;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.field label {
+  flex-shrink: 0;
+}
+
+.field input[type="number"] {
+  width: 100px;
+  padding: 4px 6px;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #0f5132;
+  background: #fff;
+  color: #0f5132;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+button:hover { background: #e6f4ea; }
+
+button.primary {
+  background: #0f5132;
+  color: #fff;
+}
+
+button.primary:hover { background: #0c3f27; }
+
+.error-box {
+  display: none;
+  background: #fdecea;
+  color: #611a15;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+
+.summary {
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.summary strong { color: #0f5132; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+th, td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th { color: #555; font-weight: 600; }
+
+.legend {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #4d4d4d;
+  flex-shrink: 0;
+}

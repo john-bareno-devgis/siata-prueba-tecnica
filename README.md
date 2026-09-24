@@ -9,7 +9,7 @@ Docker Compose y desplegable en **un solo comando**.
 - [x] Módulo 2 — PostGIS + loader de datos
 - [x] Módulo 3 — Backend FastAPI
 - [x] Módulo 4 — GeoServer + init automático
-- [ ] Módulo 5 — Visor web
+- [x] Módulo 5 — Visor web
 
 ## Requisitos por sistema operativo
 
@@ -55,7 +55,10 @@ Visor: `http://localhost:${WEB_PORT}` (por defecto `http://localhost:80`).
 ├── loader/                    # contenedor GDAL: carga el .gpkg a la BD
 ├── backend/                   # FastAPI (app/{main,config,db,routers,schemas,services})
 ├── geoserver/init/            # contenedor que configura GeoServer vía REST API
+├── geoserver/projections/     # EPSG:9377 para GeoTools (user_projections)
 └── web/                       # Nginx: visor Leaflet estático + reverse proxy
+    ├── nginx.conf
+    └── site/                  # index.html, css/, js/, vendor/leaflet/ (vendorizado, sin CDN)
 ```
 
 ## Stack y decisiones técnicas
@@ -69,7 +72,7 @@ Visor: `http://localhost:${WEB_PORT}` (por defecto `http://localhost:80`).
 | Backend | FastAPI + `psycopg 3` con pool, SQL espacial explícito (sin ORM) | Liviano, Swagger/OpenAPI automático; el cálculo geométrico pesado queda en PostGIS, no en Python. |
 | Publicación OGC | GeoServer oficial (versión fija) + contenedor `geoserver-init` que llama la REST API con `curl` | Configuración 100% automática y auditable (queda en un script versionado, no en clicks manuales). |
 | Estilo | SLD por código CLC nivel 1 | Leyenda temática legible en el visor. |
-| Visor | Leaflet estático servido por Nginx | Nginx también hace reverse proxy de `/api` y `/geoserver` → mismo origen, sin problemas de CORS. |
+| Visor | Leaflet estático servido por Nginx, assets vendorizados (sin CDN) | Nginx también hace reverse proxy de `/api` y `/geoserver` → mismo origen, sin problemas de CORS; sin CDN, el visor no depende de que el navegador del evaluador tenga salida a internet más allá de las teselas OSM. |
 | Imágenes multi-arch | `ghcr.io/osgeo/gdal` (loader), `python:3.12-slim` (backend), `nginx:1.27-alpine` (web) nativas; `postgis/postgis` y GeoServer forzadas a `linux/amd64` | Ver tabla de requisitos por SO arriba — decisión basada en qué publica cada registro, no supuesta. |
 
 ## Modelo de datos
@@ -98,11 +101,22 @@ paso hace `GET` antes de `POST`): workspace `siata` → datastore PostGIS (`cobe
 → capa `clc` → estilo [`style_nivel1.sld`](geoserver/init/style_nivel1.sld) (5 colores por
 código CLC nivel 1) como estilo por defecto de la capa.
 
-**Tercer caso del mismo problema de EPSG:9377**: GeoTools (motor de CRS de GeoServer) tampoco
-trae ese código precargado — es una base EPSG distinta a la de PostGIS/PROJ. La solución
+**Tercer y cuarto caso del mismo problema de EPSG:9377**: GeoTools (motor de CRS de GeoServer)
+tampoco trae ese código precargado — es una base EPSG distinta a la de PostGIS/PROJ. La solución
 oficial de GeoServer es un archivo `user_projections/epsg.properties` en el data dir; como
 ese data dir vive en un volumen con nombre, el servicio `geoserver-projections` lo escribe
 ahí **antes** de que arranque `geoserver` (mismo WKT ya usado para PostGIS).
+
+Al probar el visor por primera vez, la capa WMS cargaba pero no dibujaba nada. La causa:
+la definición oficial de EPSG:9377 declara eje 1 = **Northing**, eje 2 = **Easting**
+(verificado con `projinfo EPSG:9377`). GeoTools respeta ese orden al pie de la letra al
+reproyectar; PostGIS/GDAL, en cambio, siempre leen/escriben coordenadas como
+(X=easting, Y=northing), sin importar esa metadata — por eso nunca fue un problema para
+`ogr2ogr` ni para el backend. Con el orden "oficial" en el WKT, GeoServer interpretaba las
+coordenadas de PostGIS invertidas y calculaba un `latLonBoundingBox` en otro continente
+(~lat 25, cerca de México) en vez del Valle de Aburrá. Se declara el WKT en orden
+(Easting, Northing) en [`epsg.properties`](geoserver/projections/epsg.properties) —no el
+oficial, sino el que coincide con cómo el resto del stack realmente sirve los datos.
 
 **Dos detalles no obvios, resueltos y documentados en el código:**
 1. La imagen `postgis/postgis` trae su propio script de init (`10_postgis.sh`, crea la
@@ -121,10 +135,11 @@ ahí **antes** de que arranque `geoserver` (mismo WKT ya usado para PostGIS).
 - `db` — PostGIS, volumen con nombre `pgdata`, healthcheck `pg_isready`, **sin puertos al host**.
 - `loader` — GDAL, corre una vez tras `db` healthy; no recarga si ya hay datos (idempotente).
 - `backend` — FastAPI (uvicorn), healthcheck a `/api/health`, depende de que `loader` termine con éxito.
+- `geoserver-projections` — escribe `user_projections/epsg.properties` en el volumen antes de que arranque `geoserver`.
 - `geoserver` — volumen con nombre para el data dir, healthcheck a REST `about/version`.
 - `geoserver-init` — tras `geoserver` healthy: crea workspace `siata`, datastore PostGIS, capa `clc`, estilo SLD; idempotente (verifica antes de crear).
 - `web` — Nginx: `/` visor, `/api/` → `backend:8000`, `/geoserver/` → `geoserver:8080`. Único puerto publicado al host.
-- Redes: `internal` (db, loader, backend, geoserver, geoserver-init) y `public` (web, backend, geoserver).
+- Redes: `internal` (db, loader, backend, geoserver, geoserver-init, geoserver-projections) y `public` (web, backend, geoserver).
 - Todo parametrizado en `.env` (plantilla `.env.example`); ninguna credencial en el código.
 
 ## Endpoints
@@ -196,6 +211,14 @@ curl http://localhost/api/stats
   "total_ha": 37344.0416
 }
 ```
+
+## Visor
+
+`http://localhost:${WEB_PORT}` — mapa Leaflet con base OSM + capa WMS `siata:clc`
+(estilo por código CLC nivel 1). Clic en el mapa + radio (m) en el panel → `POST /api/intersect`
+→ dibuja el círculo de consulta y las coberturas resultantes, con tabla (código, cobertura,
+ha, %). Botón "Ver estadísticas del área de estudio" → `GET /api/stats`. Indicador de estado
+de `/api/health` en el encabezado (punto verde/rojo).
 
 ## Declaración de uso de IA
 

@@ -142,3 +142,19 @@ services:
       DB_TABLE: ${DB_TABLE}
     networks:
       - internal
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      geoserver-init:
+        condition: service_completed_successfully
+    ports:
+      - "${WEB_PORT}:80"
+    networks:
+      - public
+    # Único servicio con puerto publicado al host: visor en '/', reverse
+    # proxy de '/api' -> backend y '/geoserver' -> geoserver (mismo origen,
+    # sin CORS). Ver web/nginx.conf.
