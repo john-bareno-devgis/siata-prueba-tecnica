@@ -280,7 +280,7 @@ function renderKPIs(coberturas, totalHa) {
   const pctNatural = totalHa > 0 ? (haNatural / totalHa) * 100 : 0;
 
   const kpis = [
-    { label: "Área total", valor: `${totalHa.toLocaleString("es-CO", { maximumFractionDigits: 0 })} ha`, sub: "Valle de Aburrá recortado" },
+    { label: "Área total", valor: `${totalHa.toLocaleString("es-CO", { maximumFractionDigits: 0 })} ha`, sub: "Medellín (recortado)" },
     { label: "Coberturas (nivel 3)", valor: coberturas.length, sub: "categorías distintas" },
     { label: "Cobertura dominante", valor: dominante.nivel3.replace(/^\d+(\.\d+)*\.\s*/, ""), sub: `${dominante.pct.toFixed(1)}% del área` },
     { label: "Área natural (nivel 1: 3, 4, 5)", valor: `${pctNatural.toFixed(1)}%`, sub: "bosques, humedales y agua" },

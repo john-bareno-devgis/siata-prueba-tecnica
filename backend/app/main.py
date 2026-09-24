@@ -16,8 +16,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SIATA - Coberturas CLC Valle de Aburrá",
-    description="API espacial sobre CORINE Land Cover 2018 recortado al Valle de Aburrá.",
+    title="SIATA - Coberturas CLC Medellín",
+    description="API espacial sobre CORINE Land Cover 2018 recortado a Medellín.",
     version="1.0.0",
     lifespan=lifespan,
 )

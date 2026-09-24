@@ -1,4 +1,4 @@
-# SIATA — Prueba técnica (Contrato 247/2026) · Coberturas CORINE Land Cover, Valle de Aburrá
+# SIATA — Prueba técnica (Contrato 247/2026) · Coberturas CORINE Land Cover, Medellín
 
 Stack geoespacial completo: PostGIS + FastAPI + GeoServer + visor Leaflet, orquestado con
 Docker Compose y desplegable en **un solo comando**.
@@ -67,7 +67,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 .
 ├── docker-compose.yml
 ├── .env.example
-├── data/CLC_Medellin.gpkg     # dataset fuente (CORINE Land Cover, Valle de Aburrá)
+├── data/CLC_Medellin.gpkg     # dataset fuente (CORINE Land Cover, Medellín)
 ├── db/init/                   # SQL de esquema, se ejecuta al primer arranque de PostGIS
 ├── loader/                    # contenedor GDAL: carga el .gpkg a la BD
 ├── backend/                   # FastAPI (app/{main,config,db,routers,schemas,services})
@@ -150,7 +150,7 @@ reproyectar; PostGIS/GDAL, en cambio, siempre leen/escriben coordenadas como
 (X=easting, Y=northing), sin importar esa metadata — por eso nunca fue un problema para
 `ogr2ogr` ni para el backend. Con el orden "oficial" en el WKT, GeoServer interpretaba las
 coordenadas de PostGIS invertidas y calculaba un `latLonBoundingBox` en otro continente
-(~lat 25, cerca de México) en vez del Valle de Aburrá. Se declara el WKT en orden
+(~lat 25, cerca de México) en vez de Medellín. Se declara el WKT en orden
 (Easting, Northing) en [`epsg.properties`](geoserver/projections/epsg.properties) —no el
 oficial, sino el que coincide con cómo el resto del stack realmente sirve los datos.
 
