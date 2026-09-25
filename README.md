@@ -75,7 +75,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 ├── geoserver/projections/     # EPSG:9377 para GeoTools (user_projections)
 └── web/                       # Nginx: visor Leaflet estático + reverse proxy
     ├── nginx.conf
-    └── site/                  # index.html, css/, js/, assets/logos/, vendor/leaflet/ (vendorizado, sin CDN)
+    └── site/                  # index.html, css/, js/, assets/logos/, vendor/{leaflet,d3}/ (vendorizados, sin CDN)
 ```
 
 ## Stack y decisiones técnicas
@@ -90,6 +90,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 | Publicación OGC | GeoServer oficial (versión fija) + contenedor `geoserver-init` que llama la REST API con `curl` | Configuración 100% automática y auditable (queda en un script versionado, no en clicks manuales). |
 | Estilo | SLD por código CLC nivel 3 (21 categorías, por defecto), nivel 1 también disponible | Nivel 3 es la clasificación operativa real (nivel 1 son solo 5 macro-categorías); colores por familia de tono según nivel1, igual que el estándar CORINE. |
 | Visor | Leaflet estático servido por Nginx, assets vendorizados (sin CDN) | Nginx también hace reverse proxy de `/api` y `/geoserver` → mismo origen, sin problemas de CORS; sin CDN, el visor no depende de que el navegador del evaluador tenga salida a internet más allá de las teselas OSM. |
+| Gráficas | D3 v7 (vendorizado) sobre SVG propio, sin librería de charts de alto nivel | El anillo del mapa necesita control fino de geometría/sincronía con Leaflet (pan/zoom), que una librería de charts cerrada no ofrece; se reutiliza para las barras del dashboard (una sola dependencia). |
 | Imágenes multi-arch | `ghcr.io/osgeo/gdal` (loader), `python:3.12-slim` (backend), `nginx:1.27-alpine` (web) nativas; `postgis/postgis` y GeoServer forzadas a `linux/amd64` | Ver tabla de requisitos por SO arriba — decisión basada en qué publica cada registro, no supuesta. |
 
 ## Modelo de datos
@@ -261,12 +262,26 @@ curl http://localhost/api/stats
 siata.gov.co) y dos pestañas:
 
 - **Mapa**: Leaflet con base OSM + capa WMS `siata:clc` (estilo nivel 3). Clic en el mapa +
-  radio (m) en el panel → `POST /api/intersect` → dibuja el círculo de consulta y las
-  coberturas resultantes, con tabla (código, cobertura, ha, %).
+  radio (m) en el panel → `POST /api/intersect` → dibuja el círculo de consulta, las
+  coberturas resultantes, tabla (código, cobertura, ha, %) **y un anillo estadístico
+  animado en D3** alrededor del círculo (arcos proporcionales al % de cada cobertura,
+  mismos colores que la leyenda; ver detalle técnico abajo).
 - **Dashboard**: tarjetas KPI (área total, n.º de coberturas nivel 3, cobertura dominante,
-  % de área natural) + gráficas de barras (área por nivel 1, todas las coberturas nivel 3
-  ordenadas por área) — todo calculado en el cliente a partir de una sola llamada a
-  `GET /api/stats` (cacheada, no se repite la petición al cambiar de pestaña).
+  % de área natural) + **gráficas de barras en D3, interactivas** (área por nivel 1, todas
+  las coberturas nivel 3 ordenadas por área — animación de entrada, resaltado y tooltip con
+  valor exacto al pasar el mouse) — todo calculado en el cliente a partir de una sola
+  llamada a `GET /api/stats` (cacheada, no se repite la petición al cambiar de pestaña).
+
+**D3 + Leaflet** ([`app.js`](web/site/js/app.js)): el anillo del mapa usa el patrón estándar
+"capa D3 sobre Leaflet" — un `<svg>` propio en el `overlayPane` que se reposiciona en cada
+pan (clase `D3RingLayer`), y se **redibuja** (no solo reposiciona) en cada zoom, porque su
+geometría (radios en píxeles) se calculó para un nivel de zoom que ya no aplica; el círculo
+nativo de Leaflet no tiene este problema porque Leaflet lo recalcula solo. El color de cada
+arco/barra sale de `colorPorCodigo`, un mapa global `codigo → color` armado una sola vez al
+cargar `/api/stats` — reutiliza la misma fórmula HSL que usa `clc_nivel3.sld` (ver arriba),
+así el anillo, la leyenda, el dashboard y el mapa WMS nunca muestran colores distintos para
+la misma cobertura. D3 está vendorizado ([`vendor/d3/`](web/site/vendor/d3/), sin CDN, mismo
+criterio que Leaflet).
 
 La leyenda (nivel 3, 21 categorías agrupadas por nivel 1, colapsables) y el indicador de
 estado de `/api/health` (punto verde/rojo) son visibles en ambas pestañas. Al final de la
