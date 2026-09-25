@@ -143,7 +143,10 @@ def run_intersect(payload: IntersectRequest) -> tuple[list[dict], dict, dict]:
             FROM areas
             ORDER BY area_ha DESC;
         """
-        cur.execute(sql, params)
+        try:
+            cur.execute(sql, params)
+        except psycopg.Error as exc:
+            raise InvalidGeometryError(f"Error al calcular intersección: {exc}") from exc
         rows = cur.fetchall()
 
     features = [
