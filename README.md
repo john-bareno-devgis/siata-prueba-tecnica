@@ -83,7 +83,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 | Componente | Elección | Por qué |
 |---|---|---|
 | BD | PostGIS 16-3.4 (versión fija) | Estándar de facto para datos espaciales; funciones espaciales corren en el motor, no en la aplicación. |
-| SRID de almacenamiento | **EPSG:9377** (MAGNA-SIRGAS Origen Nacional) | Proyectado en metros → áreas (ha) y buffers en metros exactos, sin distorsión. La API expone/recibe siempre en 4326 (estándar web/GeoJSON). |
+| SRID de almacenamiento | **EPSG:9377** (MAGNA-SIRGAS Origen Nacional) | Proyectado en metros → áreas (ha) y buffers en metros exactos, distorsión despreciable (&lt;0,1%). La API expone/recibe siempre en 4326 (estándar web/GeoJSON). |
 | Índice espacial | GIST sobre `geom` | Acelera intersección/vecindad, las operaciones que hace el endpoint `/intersect`. |
 | Carga de datos | Contenedor GDAL (`ogr2ogr`) → tabla staging → SQL normaliza (`ST_MakeValid`, `ST_Multi`) | Reproducible desde el `.gpkg` fuente; idempotente (no duplica si ya hay datos). |
 | Backend | FastAPI + `psycopg 3` con pool, SQL espacial explícito (sin ORM) | Liviano, Swagger/OpenAPI automático; el cálculo geométrico pesado queda en PostGIS, no en Python. |
