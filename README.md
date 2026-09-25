@@ -287,28 +287,45 @@ La leyenda (nivel 3, 21 categorías agrupadas por nivel 1, colapsables) y el ind
 estado de `/api/health` (punto verde/rojo) son visibles en ambas pestañas. Al final de la
 barra lateral, crédito de autoría con link al portafolio.
 
-## Declaración de uso de IA
+## Declaración obligatoria de uso de asistentes de Inteligencia Artificial
 
-Este proyecto se construyó con asistencia de un modelo de lenguaje (asistente de código en
-terminal), módulo por módulo, con commit al cierre de cada uno. El flujo de trabajo fue:
-yo defino requisitos y decisiones de arquitectura (ver tabla de decisiones técnicas arriba),
-la IA genera una primera versión del código/configuración, y cada módulo se valida
-levantando el stack completo desde cero (`docker compose down -v && up -d --build`) antes
-de pasar al siguiente — nada se dio por bueno solo porque "se veía razonable".
+**1. Herramientas utilizadas durante el desarrollo:**
+- [x] Asistentes integrados al entorno de desarrollo: Claude Code (Anthropic), ejecutado localmente en terminal.
+- [x] Modelos de chat generativo: Claude (Anthropic), para análisis del enunciado y planeación.
+- [ ] Ninguna herramienta de IA fue utilizada.
 
-Ejemplos concretos de errores reales que la validación en vivo encontró y que tuvieron que
-corregirse (no hipotéticos, quedan documentados en el código y en los mensajes de commit):
+**2. Naturaleza del apoyo recibido:**
+- [x] Estructuración de plantillas base (Docker Compose, Dockerfiles, API FastAPI y visor).
+- [x] Asistencia en sintaxis de consultas espaciales, visor web y configuración de GeoServer.
+- [x] Depuración de errores de configuración y dependencias.
+- [x] Redacción de documentación.
 
-- Un bind-mount que borraba el script de inicialización propio de la imagen de PostGIS
-  (`db/Dockerfile`).
-- EPSG:9377 no viene precargado ni en PostGIS ni en GeoTools (motor de CRS de GeoServer);
-  hubo que registrar la definición manualmente en ambos, cada uno con su propio mecanismo
-  (`db/init/01_schema.sql`, `geoserver/projections/epsg.properties`).
-- Un error de orden de ejes (Northing/Easting) en esa misma definición para GeoTools que
-  hacía que el mapa se desplazara a otro continente — solo visible probando el visor en un
-  navegador real, no con `curl`.
+La arquitectura, el alcance y las decisiones técnicas fueron definidas por mí
+(SRID de almacenamiento, área de estudio, stack, estrategia de publicación OGC,
+compatibilidad multiplataforma y modo desarrollo). La implementación se generó
+con asistencia de IA bajo mi dirección, y fue revisada, probada y ajustada por mí
+módulo por módulo.
 
-Todo el SQL espacial, los endpoints y sus reglas de validación, y las decisiones de
-arquitectura (SRID de almacenamiento, separación staging/normalización, manejo de errores
-por capas) fueron revisados y entendidos línea por línea, no solo copiados — es el criterio
-que debo poder sustentar en la entrevista técnica.
+**3. Validación crítica del desarrollador:**
+
+Errores que aparecieron al probar el stack (la IA propuso, falló, se corrigió):
+
+1. **Init de PostGIS:** se propuso montar `db/init` sobre `/docker-entrypoint-initdb.d`; eso borraba el `10_postgis.sh` de la imagen (`type "geometry" does not exist`). Se resolvió con `db/Dockerfile` usando `COPY` (`20_schema.sql`) en vez de bind-mount.
+2. **EPSG:9377 en PostGIS:** no viene en `spatial_ref_sys`; `ogr2ogr` asignaba un SRID privado (900914) que chocaba con `geometry(...,9377)`. Se registró la definición oficial antes de cargar (`db/init/01_schema.sql`).
+3. **EPSG:9377 en GeoServer:** GeoTools tampoco lo trae y publicar la capa devolvía HTTP 500. Se agregó `user_projections/epsg.properties`, escrito por el servicio `geoserver-projections` antes de arrancar GeoServer.
+4. **Orden de ejes:** el WKT oficial declara Northing-Easting, pero PostGIS/GDAL sirven Easting-Northing; la capa WMS salía vacía y su bbox caía cerca de México. Se declaró Easting-Northing en `epsg.properties`.
+5. **Imagen de GDAL:** se propuso `osgeo/gdal:ubuntu-small-3.8.4`, que no existe en Docker Hub (llega a 3.6.3). Al verificar los manifests se cambió por `ghcr.io/osgeo/gdal`, multi-arquitectura.
+6. **Arquitectura ARM:** `postgis/postgis` y GeoServer no publican build arm64; se fijó `platform: linux/amd64` y se documentó la emulación en Mac ARM.
+7. **Estilos de GeoServer:** al pasar `geoserver-init` a un bucle, los archivos `style_nivel*.sld` no coincidían con el nombre del estilo (`@${STYLE}.sld`) y el contenedor salía con código 26. Se renombraron a `clc_nivel1.sld` y `clc_nivel3.sld`.
+8. **Nivel 3:** se iba a derivar con los 3 primeros dígitos de `codigo`; al inspeccionar el `.gpkg` se vio que ya trae `nivel_3` con el nombre oficial (varios códigos de 4-5 dígitos comparten grupo), y se cargó desde ahí.
+9. **Leyenda duplicada:** "3.1.1 Bosque denso" aparecía dos veces y los colores del frontend no coincidían con el SLD. Se agregó `agruparPorNivel3`, con la misma agrupación del SQL que generó el SLD.
+10. **Etiquetas de las barras D3:** las largas se cortaban por la izquierda perdiendo el código; se truncan con elipsis midiendo `getComputedTextLength`.
+
+Ajustes que yo pedí sobre lo que la IA propuso:
+
+11. **Portabilidad:** exigí `.gitattributes` con `eol=lf`, scripts invocados con `sh`, volúmenes con nombre, puerto web configurable e imágenes multi-arquitectura.
+12. **Área de estudio:** corregí que es Medellín y no todo el Valle de Aburrá; se cambió en interfaz, API y documentación.
+13. **Color del header:** la IA propuso fondo blanco para que el logo se leyera mejor; elegí el teal de marca.
+
+**Compromiso de sustentación:** asumo la autoría y responsabilidad íntegra sobre
+la solución entregada y estoy en disposición de sustentar cada decisión técnica.
