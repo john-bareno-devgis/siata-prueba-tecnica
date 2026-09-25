@@ -85,7 +85,7 @@ def _query_geom_9377(payload: IntersectRequest) -> tuple[str, dict]:
     expr = (
         "ST_Buffer("
         "ST_Transform(ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326), 9377), "
-        "%(radius_m)s)"
+        "%(radius_m)s, 'quad_segs=32')"
     )
     return expr, params
 
