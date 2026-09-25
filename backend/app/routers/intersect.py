@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
-from ..schemas.intersect import IntersectRequest
+from ..schemas.intersect import IntersectRequest, IntersectResponse
 from ..services.geo import InvalidGeometryError, run_intersect
 
 router = APIRouter(tags=["intersect"])
 
 
-@router.post("/intersect")
+@router.post("/intersect", response_model=IntersectResponse)
 def intersect(payload: IntersectRequest):
     try:
         features, query_geometry, summary = run_intersect(payload)
