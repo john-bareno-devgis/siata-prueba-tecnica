@@ -25,7 +25,7 @@ del SO host), los scripts se invocan con `sh` (POSIX, sin bashismos) y el repo f
 | **Mac (Intel)** | Docker Desktop | Ruta nativa. |
 | **Mac (Apple Silicon / ARM)** | Docker Desktop con emulación x86_64 habilitada (activada por defecto) | Las imágenes `postgis/postgis:16-3.4` y `docker.osgeo.org/geoserver:2.25.2` **no publican build arm64** (verificado contra el manifest de cada registro); se fija `platform: linux/amd64` en esos servicios y Docker Desktop las ejecuta vía Rosetta/QEMU automáticamente. El resto de imágenes (`ghcr.io/osgeo/gdal`, `python`, `nginx`) sí son multi-arch nativas. |
 
-El puerto publicado al host es configurable vía `WEB_PORT` en `.env` (por si `80` ya está
+El puerto publicado al host es configurable vía `WEB_PORT` en `.env` (por si `8080` ya está
 ocupado en la máquina del evaluador).
 
 ## Despliegue (un solo paso)
@@ -42,7 +42,7 @@ docker compose down -v
 docker compose up -d --build
 ```
 
-Visor: `http://localhost:${WEB_PORT}` (por defecto `http://localhost:80`).
+Visor: `http://localhost:${WEB_PORT}` (por defecto `http://localhost:8080`).
 
 ## Modo desarrollo
 
