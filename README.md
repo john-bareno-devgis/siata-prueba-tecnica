@@ -88,7 +88,7 @@ Para volver al modo normal, `docker compose down` y levantar de nuevo sin `-f do
 | Carga de datos | Contenedor GDAL (`ogr2ogr`) → tabla staging → SQL normaliza (`ST_MakeValid`, `ST_Multi`) | Reproducible desde el `.gpkg` fuente; idempotente (no duplica si ya hay datos). |
 | Backend | FastAPI + `psycopg 3` con pool, SQL espacial explícito (sin ORM) | Liviano, Swagger/OpenAPI automático; el cálculo geométrico pesado queda en PostGIS, no en Python. |
 | Publicación OGC | GeoServer oficial (versión fija) + contenedor `geoserver-init` que llama la REST API con `curl` | Configuración 100% automática y auditable (queda en un script versionado, no en clicks manuales). |
-| Estilo | SLD por código CLC nivel 3 (21 categorías, por defecto), nivel 1 también disponible | Nivel 3 es la clasificación operativa real (nivel 1 son solo 5 macro-categorías); colores por familia de tono según nivel1, igual que el estándar CORINE. |
+| Estilo | SLD por código CLC nivel 3 (23 categorías, por defecto), nivel 1 también disponible | Nivel 3 es la clasificación operativa real (nivel 1 son solo 5 macro-categorías); colores por familia de tono según nivel1, igual que el estándar CORINE. |
 | Visor | Leaflet estático servido por Nginx, assets vendorizados (sin CDN) | Nginx también hace reverse proxy de `/api` y `/geoserver` → mismo origen, sin problemas de CORS; sin CDN, el visor no depende de que el navegador del evaluador tenga salida a internet más allá de las teselas OSM. |
 | Gráficas | D3 v7 (vendorizado) sobre SVG propio, sin librería de charts de alto nivel | El anillo del mapa necesita control fino de geometría/sincronía con Leaflet (pan/zoom), que una librería de charts cerrada no ofrece; se reutiliza para las barras del dashboard (una sola dependencia). |
 | Imágenes multi-arch | `ghcr.io/osgeo/gdal` (loader), `python:3.12-slim` (backend), `nginx:1.27-alpine` (web) nativas; `postgis/postgis` y GeoServer forzadas a `linux/amd64` | Ver tabla de requisitos por SO arriba — decisión basada en qué publica cada registro, no supuesta. |
@@ -128,13 +128,13 @@ nombres.
 vía REST API tras el healthcheck de `geoserver` (`curl` autenticado, idempotente — cada
 paso hace `GET` antes de `POST`): workspace `siata` → datastore PostGIS (`coberturas.clc`)
 → capa `clc` → dos estilos SLD, [`clc_nivel1.sld`](geoserver/init/clc_nivel1.sld) (5 colores,
-nivel 1) y [`clc_nivel3.sld`](geoserver/init/clc_nivel3.sld) (21 colores, nivel 3 — estilo por
+nivel 1) y [`clc_nivel3.sld`](geoserver/init/clc_nivel3.sld) (23 colores, nivel 3 — estilo por
 defecto de la capa). Los colores de `clc_nivel3.sld` no se inventaron a mano: se generaron
 con un script Python (HSL) que fija un tono (hue) por nivel1 y varía la luminosidad según la
 posición del código dentro de su grupo — mismo criterio que usa CORINE Land Cover
 oficialmente (subcategorías de una misma familia comparten matiz). El frontend
 ([`app.js`](web/site/js/app.js)) recalcula esos mismos colores con la misma fórmula en vez
-de mantener una lista de 21 colores duplicada a mano: así el mapa (SLD), la leyenda y las
+de mantener una lista de 23 colores duplicada a mano: así el mapa (SLD), la leyenda y las
 gráficas del dashboard siempre quedan sincronizados entre sí y con lo que de verdad
 devuelve `/api/stats`, sin poder desincronizarse por un edit en un solo lugar.
 
@@ -283,7 +283,7 @@ así el anillo, la leyenda, el dashboard y el mapa WMS nunca muestran colores di
 la misma cobertura. D3 está vendorizado ([`vendor/d3/`](web/site/vendor/d3/), sin CDN, mismo
 criterio que Leaflet).
 
-La leyenda (nivel 3, 21 categorías agrupadas por nivel 1, colapsables) y el indicador de
+La leyenda (nivel 3, 23 categorías agrupadas por nivel 1, colapsables) y el indicador de
 estado de `/api/health` (punto verde/rojo) son visibles en ambas pestañas. Al final de la
 barra lateral, crédito de autoría con link al portafolio.
 
