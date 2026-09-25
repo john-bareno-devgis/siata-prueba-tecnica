@@ -20,15 +20,15 @@ services:
     platform: linux/amd64
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-siata}
+      POSTGRES_USER: ${POSTGRES_USER:-siata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siata}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-siata} -d ${POSTGRES_DB:-siata}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -42,13 +42,13 @@ services:
       db:
         condition: service_healthy
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_SCHEMA: ${DB_SCHEMA}
-      DB_TABLE: ${DB_TABLE}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-siata}
+      POSTGRES_USER: ${POSTGRES_USER:-siata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siata}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_TABLE: ${DB_TABLE:-cobertura_tierra}
     volumes:
       - ./data:/data:ro
     networks:
@@ -61,13 +61,13 @@ services:
       loader:
         condition: service_completed_successfully
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_SCHEMA: ${DB_SCHEMA}
-      DB_TABLE: ${DB_TABLE}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-siata}
+      POSTGRES_USER: ${POSTGRES_USER:-siata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siata}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_TABLE: ${DB_TABLE:-cobertura_tierra}
     networks:
       - internal
       - public
@@ -105,8 +105,8 @@ services:
       geoserver-projections:
         condition: service_completed_successfully
     environment:
-      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
-      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver}
       SKIP_DEMO_DATA: "true"
     volumes:
       - geoserver_data:/opt/geoserver_data
@@ -114,7 +114,7 @@ services:
       - internal
       - public
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8080/geoserver/rest/about/version.json -u $${GEOSERVER_ADMIN_USER}:$${GEOSERVER_ADMIN_PASSWORD}"]
+      test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8080/geoserver/rest/about/version.json -u $${GEOSERVER_ADMIN_USER:-admin}:$${GEOSERVER_ADMIN_PASSWORD:-geoserver}"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -128,18 +128,18 @@ services:
       geoserver:
         condition: service_healthy
     environment:
-      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
-      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
-      GEOSERVER_WORKSPACE: ${GEOSERVER_WORKSPACE}
-      GEOSERVER_DATASTORE: ${GEOSERVER_DATASTORE}
-      GEOSERVER_LAYER: ${GEOSERVER_LAYER}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_SCHEMA: ${DB_SCHEMA}
-      DB_TABLE: ${DB_TABLE}
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver}
+      GEOSERVER_WORKSPACE: ${GEOSERVER_WORKSPACE:-siata}
+      GEOSERVER_DATASTORE: ${GEOSERVER_DATASTORE:-clc_medellin}
+      GEOSERVER_LAYER: ${GEOSERVER_LAYER:-cobertura_tierra}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-siata}
+      POSTGRES_USER: ${POSTGRES_USER:-siata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siata}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      DB_TABLE: ${DB_TABLE:-cobertura_tierra}
     networks:
       - internal
 
@@ -152,7 +152,7 @@ services:
       geoserver-init:
         condition: service_completed_successfully
     ports:
-      - "${WEB_PORT}:80"
+      - "${WEB_PORT:-8080}:80"
     networks:
       - public
     # Único servicio con puerto publicado al host: visor en '/', reverse
