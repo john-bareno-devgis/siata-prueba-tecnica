@@ -20,6 +20,8 @@ app = FastAPI(
     description="API espacial sobre CORINE Land Cover 2018 recortado a Medellín.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
 )
 
 app.include_router(health.router, prefix="/api")
